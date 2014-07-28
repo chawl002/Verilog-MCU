@@ -1,13 +1,56 @@
-module PC( posedge clk)
+/*http://www.ece.umd.edu/courses/enee359a/verilog_tutorial.pdf
+//need to create clock generator function
+always begin
+#5 clock = ~clock //toggle every 5 ticks
+end
+*/
 
+//125 in textbook
+module PCMUX(clk, input SR1OUT, input[15:0] add_one, input[1:0] select, output[15:0]PCADDR)
+input SR1OUT; //input from register file
+input[15:0] add_one; //update PC
+input[1:0]select; //select line for the MUX
+output [15:0]PCADDR; //chosen output for PC
 
-
+initial
+   begin
+	case(select)
+	00 : begin 
+		assign next_instruction = next_instruction + add_one;
+			PCADDR = next_instruction;
+		end
+	01 : assign PCADDR = SR1OUT;
+	10 : //do nothing
+	endcase
+   end
 endmodule
 
+module PC(clk, input MAR, input MARPC, input GATEPC, output next_instruction)
+///input clk;
+input [15:0] MAR;
 
+input GATEPC;
+output [15:0] next_instruction;
 
+initial
+   begin
+	if(GATEPC == 1 && MARPC == 1)
+	{
+		assign next_instruction = MAR;
+	}
+	next_instruction = next_instruction + 1;
+   end
+endmodule
 
-module UserInput(B_INPUT);
+//memory & MDR
+	//put contents of next_instruction in MDR
+	//send MDR to IR
+//IR
+//Register bank/file
+//ALU
+//Finite State Machine
+
+/*module UserInput(B_INPUT);
 	input[15:0] B_INPUT;//vector
 //if (BINARY[11] == 1) //ADD RN + data //if more than one line, use begin and end.
 //(OPCODE, RN, DATA) = INSTRUCTION
@@ -24,7 +67,7 @@ begin
 		  
 		16'b00001???????????: 
 			begin
-			//(OPERATION, FLAG, REGISTER1, DATA) = BINARY_INPUT;
+			//assign{OPERATION, FLAG, REGISTER1, DATA} = BINARY_INPUT;
 			$display("ADD Rn, #data\n");
 			end
 		 
@@ -39,4 +82,4 @@ begin
 			end	
 endcase
 end
-endmodule
+endmodule*/
