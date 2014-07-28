@@ -1,0 +1,42 @@
+module PC( posedge clk)
+
+
+
+endmodule
+
+
+
+
+module UserInput(B_INPUT);
+	input[15:0] B_INPUT;//vector
+//if (BINARY[11] == 1) //ADD RN + data //if more than one line, use begin and end.
+//(OPCODE, RN, DATA) = INSTRUCTION
+//$write(""); //%b is binary value
+	//reg [3:0] OPERATION;
+	//reg FLAG;
+	//reg[2:0] REGISTER1;
+	//reg[2:0] REGISTER2;
+	//reg[7:0] DATA;
+	//reg[7:0] ADDRESS;
+always@(*)
+begin
+	casez(B_INPUT)
+		  
+		16'b00001???????????: 
+			begin
+			//(OPERATION, FLAG, REGISTER1, DATA) = BINARY_INPUT;
+			$display("ADD Rn, #data\n");
+			end
+		 
+		16'b00000???0???????:
+			begin
+			$display("ADD Rn, address\n");
+			end
+ 		  //5432109876543210
+		16'b00000???000010??:
+			begin
+			$display("ADD Rn, @Ri");
+			end	
+endcase
+end
+endmodule
