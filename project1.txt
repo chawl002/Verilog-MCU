@@ -6,39 +6,42 @@ end
 */
 
 //125 in textbook
-module PCMUX(clk, SR1OUT, add_one, select, PCADDR)
-input SR1OUT; //input from register file
+module PCMUX(SR1OUT, add_one, next_instruction, select, PCADDR);
+
+input[15:0] SR1OUT; //input from register file
 input[15:0] add_one; //update PC
-input[1:0]select; //select line for the MUX
-output [15:0]PCADDR; //chosen output for PC
+input[15:0] next_instruction;
+input[1:0] select; //select line for the MUX
+output[15:0]PCADDR; //chosen output for PC
 
 initial
    begin
 	case(select)
 	00 : begin 
-		assign next_instruction = next_instruction + add_one;
-			PCADDR = next_instruction;
-		end
-	01 : assign PCADDR = SR1OUT;
-	10 : //do nothing
+		next_instruction = next_instruction + add_one;
+		PCADDR = next_instruction;
+	     end
+	01 : PCADDR = SR1OUT;
+	//10 : //do nothing
 	endcase
    end
 endmodule
 
-module PC(clk, MAR, MARPC, GATEPC, next_instruction)
+module PC(MAR, MARPC, GATEPC, next_instruction);
 ///input clk;
-input [15:0] MAR;
-
+input[15:0] MAR;
+input MARPC;
 input GATEPC;
-output [15:0] next_instruction;
+output[15:0] next_instruction;
+
+//reg[15:0] MAR, next_instruction;
+//reg MARPC, GATEPC;
 
 initial
    begin
-	if(GATEPC == 1 && MARPC == 1)
-	{
-		assign MAR = next_instruction;
-	}
-	next_instruction = next_instruction + 1;
+	if(GATEPC == 1 && MARPC == 1) MAR <= next_instruction;
+	
+	assign next_instruction = next_instruction + 1;
    end
 endmodule
 
@@ -46,25 +49,34 @@ endmodule
 	//put contents of next_instruction in MDR
 	//send MDR to IR
 
-module memory(MAR, LDMDR, GATEMDR, MDR)
-input MAR[15:0];
-wire LDMAR;
-wire GATEMDR;
-output MDR;
-wire [15:0] read_file;
-i = 0;
+module memory(MAR, LDMDR, GATEMDR, MDR, j);
+input [15:0] MAR;
+input LDMDR;
+input GATEMDR;
+output reg[15:0] MDR;
+reg [15:0] read_file;
+reg[15:0] it = 0000000000000000;
+input j;
 //m[mar] = mdr //use file with instructions.
 //taken from: http://www.fullchipdesign.com/verilog_file_open_close.htm
-always(*)
-   if(i <= MAR) 
-	begin
-		read_file = $fopen("testbench.txt", r);
-	end
-	i <= i + 1;
-end
-	MDR = read_file;
+always@(it)
+   begin
+	casez(j)
+	0: begin//MDR = mem[MAR]
+   		if(it == MAR)
+		begin 
+			read_file = $fopen("testbench.txt", r);
+		end
+	   end
+	//1: //write to testbench put MDR in memory
+	endcase	
+	it <= it + 1;
+   end
+initial
+   begin
+	if(LDMDR == 1 && GATEMDR == 1) MDR = read_file;
 	$fclose(readme.txt);
-   
+   end
 endmodule
 //IR
 //Register bank/file
