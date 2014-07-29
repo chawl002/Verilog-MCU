@@ -6,7 +6,7 @@ end
 */
 
 //125 in textbook
-module PCMUX(clk, input SR1OUT, input[15:0] add_one, input[1:0] select, output[15:0]PCADDR)
+module PCMUX(clk, SR1OUT, add_one, select, PCADDR)
 input SR1OUT; //input from register file
 input[15:0] add_one; //update PC
 input[1:0]select; //select line for the MUX
@@ -25,7 +25,7 @@ initial
    end
 endmodule
 
-module PC(clk, input MAR, input MARPC, input GATEPC, output next_instruction)
+module PC(clk, MAR, MARPC, GATEPC, next_instruction)
 ///input clk;
 input [15:0] MAR;
 
@@ -36,7 +36,7 @@ initial
    begin
 	if(GATEPC == 1 && MARPC == 1)
 	{
-		assign next_instruction = MAR;
+		assign MAR = next_instruction;
 	}
 	next_instruction = next_instruction + 1;
    end
@@ -45,6 +45,27 @@ endmodule
 //memory & MDR
 	//put contents of next_instruction in MDR
 	//send MDR to IR
+
+module memory(MAR, LDMDR, GATEMDR, MDR)
+input MAR[15:0];
+wire LDMAR;
+wire GATEMDR;
+output MDR;
+wire [15:0] read_file;
+i = 0;
+//m[mar] = mdr //use file with instructions.
+//taken from: http://www.fullchipdesign.com/verilog_file_open_close.htm
+always(*)
+   if(i <= MAR) 
+	begin
+		read_file = $fopen("testbench.txt", r);
+	end
+	i <= i + 1;
+end
+	MDR = read_file;
+	$fclose(readme.txt);
+   
+endmodule
 //IR
 //Register bank/file
 //ALU
