@@ -4,44 +4,115 @@ always begin
 #5 clock = ~clock //toggle every 5 ticks
 end
 */
+//taken from http://www.edaboard.com/thread145292.html
+//16bit adder
+module RCA4(A,B,Ci,So,Co);
+input [3:0] A,B;
+input Ci;
+output [3:0] So;
+output Co;
+wire c1,c2,c3,c4;
+wire g0,g1,g2,g3;
+wire p0,p1,p2,p3;
+
+assign g0=A[0]&B[0];
+assign g1=A[1]&B[1];
+assign g2=A[2]&B[2];
+assign g3=A[3]&B[3];
+
+assign p0=A[0]|B[0];
+assign p1=A[1]|B[1];
+assign p2=A[2]|B[2];
+assign p3=A[3]|B[3];
+
+assign c1=g0|(p0&Ci);
+assign c2=g1|(p1&g0)|(p1&p0&Ci);
+assign c3=g2|(p2&g1)|(p2&p1&g0)|(p2&p1&p0&Ci);
+assign c4=g3|(p3&g2)|(p3&p2&g1)|(p3&p2&p1&g0)|(p3&p2&p1&p0&Ci);
+assign Co=c4;
+
+assign So[0]=g0^p0^Ci;
+assign So[1]=g1^p1^c1;
+assign So[2]=g2^p2^c2;
+assign So[3]=g3^p3^c3;
+endmodule
+
+//http://www.edaboard.com/thread145292.html
+module CSA8(A,B,Ci,So,Co);
+input [7:0] A,B;
+input Ci;
+output [7:0] So;
+output Co;
+
+wire [3:0] stemp1,stemp0;
+wire c4;
+wire c80,c81;
+
+RCA4 RCA4in(A[3:0],B[3:0],Ci,So[3:0],c4);
+RCA4 RCA41 (A[7:4],B[7:4],1'b1,stemp1,c81);
+RCA4 RCA40 (A[7:4],B[7:4],1'b0,stemp0,c80);
+
+assign So[7:4] = c4?stemp1:stemp0;
+assign Co= c4?c81:c80;
+
+endmodule
+
+//http://www.edaboard.com/thread145292.html
+module CSA16(A,B,Ci,So,Co);
+input [15:0] A,B;
+input Ci;
+output [15:0] So;
+output Co;
+
+wire [7:0] stemp1,stemp0;
+wire c8;
+wire c160,c161;
+
+CSA8 CSA8in(A[7:0],B[7:0],Ci,So[7:0],c8 );
+CSA8 CSA81 (A[15:8],B[15:8],1'b1,stemp1,c161);
+CSA8 CSA80 (A[15:8],B[15:8],1'b0,stemp0,c160);
+
+assign So[15:8] = c8?stemp1:stemp0;
+assign Co= c8?c161:c160;
+
+endmodule
 
 //125 in textbook
-module PCMUX(SR1OUT, add_one, next_instruction, select, PCADDR);
+module PCMUX(SR1OUT, add_one, next_instruction, select, );
 
 input[15:0] SR1OUT; //input from register file
 input[15:0] add_one; //update PC
 input[15:0] next_instruction;
-input[1:0] select; //select line for the MUX
-output[15:0]PCADDR; //chosen output for PC
+input[1:0] select; //select line for the MUX\
 
 initial
    begin
 	case(select)
 	00 : begin 
-		next_instruction = next_instruction + add_one;
-		PCADDR = next_instruction;
+		     // A                              B           Ci       So      Co
+		CSA16(next_instruction[15:0], 16'b0000000000000001, 0, next_instruction[15:0], 0);
 	     end
-	01 : PCADDR = SR1OUT;
+	01 : CSA16(SR1OUT[15:0], 16'b0000000000000000, 0, next_instruction[15:0], 0);
 	//10 : //do nothing
 	endcase
    end
 endmodule
 
-module PC(MAR, MARPC, GATEPC, next_instruction);
+module PC(MAR, MARPC, GATEPC, PCADDR);
 ///input clk;
 input[15:0] MAR;
 input MARPC;
 input GATEPC;
-output[15:0] next_instruction;
+output[15:0]PCADDR; //chosen output for PC
 
 //reg[15:0] MAR, next_instruction;
 //reg MARPC, GATEPC;
 
 initial
    begin
-	if(GATEPC == 1 && MARPC == 1) MAR <= next_instruction;
-	
-	assign next_instruction = next_instruction + 1;
+	if(GATEPC == 1 && MARPC == 1) 
+	CSA16(MAR[15:0], 16'b0000000000000000, 0, PCADDR[15:0], 0);
+
    end
 endmodule
 
@@ -78,41 +149,75 @@ initial
 	$fclose(readme.txt);
    end
 endmodule
+
 //IR
-//Register bank/file
-//ALU
+module IR(LDIR, MDR, IR);
+	input LDIR;
+	input[15:0] MDR;
+	output[15:0] IR;
+
+   initial 
+	if(LDIR == 1) CSA16(MDR[15:0], 16'b0000000000000000, 0, IR[15:0], 0);
+endmodule
+
 //Finite State Machine
+module FSM(IR, ALUK, SR2select, GATEALU);
+input[15:0] IR;
+output[1:0] ALUK;
+output[1:0] SR2select; //01 for data, 10 for address, 00 for register
+output GATEALU;
+
+	reg [3:0] OPERATION;
+	reg FLAG;
+	reg[2:0] REGISTER1;
+	reg[2:0] REGISTER2;
+	reg[7:0] DATA;
+	reg[7:0] ADDRESS;
+always@(*)
+begin
+	casez(IR)
+		  
+		16'b00001???????????: 
+			begin
+			assign{OPERATION, FLAG, REGISTER1, DATA} = IR;
+//ALUk selects 1 for data and register goes to ALU
+//gate alu = 1
+			ALUK = 2'b11; //these assignments do not work, create ALU function and pass them through
+			SR2select = 2'b01;
+			GATEALU = 1;
+//ALU(SR2select, ...); perform operation and output what it did
+			$display("ADD Rn, #data\n");
+			end
+		 
+		16'b00000???0???????:
+			begin
+			ALUK = 2'b11; 
+			SR2select = 2'b10;
+			GATEALU = 1;
+			$display("ADD Rn, address\n");
+			end
+ 		  //5432109876543210
+		16'b00000???000010??:
+			begin
+			ALUK = 2'b11;
+			SR2select = 2'b00;
+			GATEALU = 1;
+			$display("ADD Rn, @Ri");
+			end	
+       endcase
+end
+endmodule
+
+
+
+//Register bank/file
+
+//ALU
+
 
 /*module UserInput(B_INPUT);
 	input[15:0] B_INPUT;//vector
 //if (BINARY[11] == 1) //ADD RN + data //if more than one line, use begin and end.
 //(OPCODE, RN, DATA) = INSTRUCTION
 //$write(""); //%b is binary value
-	//reg [3:0] OPERATION;
-	//reg FLAG;
-	//reg[2:0] REGISTER1;
-	//reg[2:0] REGISTER2;
-	//reg[7:0] DATA;
-	//reg[7:0] ADDRESS;
-always@(*)
-begin
-	casez(B_INPUT)
-		  
-		16'b00001???????????: 
-			begin
-			//assign{OPERATION, FLAG, REGISTER1, DATA} = BINARY_INPUT;
-			$display("ADD Rn, #data\n");
-			end
-		 
-		16'b00000???0???????:
-			begin
-			$display("ADD Rn, address\n");
-			end
- 		  //5432109876543210
-		16'b00000???000010??:
-			begin
-			$display("ADD Rn, @Ri");
-			end	
-endcase
-end
-endmodule*/
+
