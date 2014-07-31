@@ -5,7 +5,7 @@ always begin
 end
 */
 //taken from http://www.edaboard.com/thread145292.html
-//16bit adder
+
 module RCA4(A,B,Ci,So,Co);
 input [3:0] A,B;
 input Ci;
@@ -77,8 +77,25 @@ assign Co= c8?c161:c160;
 
 endmodule
 
+module AND16(A, B, C);
+	input[15:0] A;
+	input[15:0] B;
+	output[15:0] C;
+	reg[15:0] test = 0000000000000000;
+	integer i = 0;
+initial 
+   begin
+	for(i = 0; i < 16; i = i+1) begin
+		if(A[i] & B[i]) test[i] = 1;
+		else test[i] = 0;
+        end
+	
+   end
+assign C = test;
+endmodule
+
 //125 in textbook
-module PCMUX(SR1OUT, add_one, next_instruction, select, );
+module PCMUX(SR1OUT, add_one, next_instruction, select);
 
 input[15:0] SR1OUT; //input from register file
 input[15:0] add_one; //update PC
@@ -161,63 +178,86 @@ module IR(LDIR, MDR, IR);
 endmodule
 
 //Finite State Machine
-module FSM(IR, ALUK, SR2select, GATEALU);
+module FSM(IR);
 input[15:0] IR;
-output[1:0] ALUK;
-output[1:0] SR2select; //01 for data, 10 for address, 00 for register
-output GATEALU;
 
 	reg [3:0] OPERATION;
 	reg FLAG;
 	reg[2:0] REGISTER1;
 	reg[2:0] REGISTER2;
 	reg[7:0] DATA;
-	reg[7:0] ADDRESS;
+	reg[6:0] ADDRESS;
 always@(*)
 begin
 	casez(IR)
 		  
-		16'b00001???????????: 
+		16'b00001???????????: //ADD RN, data
 			begin
 			assign{OPERATION, FLAG, REGISTER1, DATA} = IR;
-//ALUk selects 1 for data and register goes to ALU
-//gate alu = 1
-			ALUK = 2'b11; //these assignments do not work, create ALU function and pass them through
-			SR2select = 2'b01;
-			GATEALU = 1;
-//ALU(SR2select, ...); perform operation and output what it did
+			//  ALUK    SR2   reg1    reg2  data  addr, gatealu, answer
+			ALU(2'b11, 2'b01, REGISTER1, 0, DATA, 0,1'b1, 16'b0);
 			$display("ADD Rn, #data\n");
 			end
-		 
-		16'b00000???0???????:
+		 //5432109876543210
+		16'b00000???????????: //ADD RN, address
 			begin
-			ALUK = 2'b11; 
-			SR2select = 2'b10;
-			GATEALU = 1;
+			assign{OPERATION, FLAG, REGISTER1, FLAG, ADDRESS} = IR;
+			ALU(2'b11, 2'b10, REGISTER1, 0, 1'b0, ADDRESS, 1'b1, 16'b0);
 			$display("ADD Rn, address\n");
 			end
  		  //5432109876543210
-		16'b00000???000010??:
+		16'b00000????00010??: //ADD RN Ri
 			begin
-			ALUK = 2'b11;
-			SR2select = 2'b00;
-			GATEALU = 1;
+			assign{OPERATION, FLAG, REGISTER1, FLAG, FLAG, FLAG, FLAG, FLAG, REGISTER2} = IR;
+			ALU(2'b11, 2'b00, REGISTER1, REGISTER2, 0, 0, 1'b1, 16'b0);
 			$display("ADD Rn, @Ri");
 			end	
+		16'b00011???????????: //ANDC RN data
+			begin
+			$display("ANDC Rn, data\n");
+			end
        endcase
 end
 endmodule
 
+//ALU
+module ALU(ALUK, SR2select, REGISTER1, REGISTER2, DATA, ADDRESS, GATEALU, ANSWER);
+input[1:0] ALUK;
+input[1:0] SR2select;//01 for data, 10 for address, 00 for register
+input[15:0] REGISTER1;
+input[15:0] REGISTER2;
+input[7:0] DATA;
+input[6:0] ADDRESS;
+input GATEALU;
+output[15:0] ANSWER;
+
+initial
+   begin
+    if(ALUK== 2'b11 && GATEALU == 1) begin
+	//ADD
+	if(SR2select == 2'b01)
+		//     A                 B        C   Sum          C
+		CSA16(REGISTER1[15:0], DATA[7:0], 0, ANSWER[15:0], 0);
+	
+	if(SR2select == 2'b10)
+		CSA16(REGISTER1[15:0], ADDRESS, 0, ANSWER[15:0], 0);
+        if(SR2select == 2'b00)
+		CSA16(REGISTER1[15:0], REGISTER2[15:0], 0, ANSWER[15:0], 0);
+     end
+   end
+endmodule
 
 
 //Register bank/file
+module REGBANK(REGISTER1, REGISTER2, LDREG, SR1OUT, SR2OUT);
+	input LDREG;
+	input REGISTER1, REGISTER2;
+	output SR1OUT, SR2OUT;
+initial 
+   begin
+	if(LDREG == 1) begin
 
-//ALU
+	end
+   end
 
-
-/*module UserInput(B_INPUT);
-	input[15:0] B_INPUT;//vector
-//if (BINARY[11] == 1) //ADD RN + data //if more than one line, use begin and end.
-//(OPCODE, RN, DATA) = INSTRUCTION
-//$write(""); //%b is binary value
-
+endmodule
