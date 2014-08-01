@@ -5,7 +5,7 @@ always begin
 end
 */
 //taken from http://www.edaboard.com/thread145292.html
-
+//4 bit adder
 module RCA4(A,B,Ci,So,Co);
 input [3:0] A,B;
 input Ci;
@@ -36,7 +36,7 @@ assign So[1]=g1^p1^c1;
 assign So[2]=g2^p2^c2;
 assign So[3]=g3^p3^c3;
 endmodule
-
+//8bit adder
 //http://www.edaboard.com/thread145292.html
 module CSA8(A,B,Ci,So,Co);
 input [7:0] A,B;
@@ -56,7 +56,7 @@ assign So[7:4] = c4?stemp1:stemp0;
 assign Co= c4?c81:c80;
 
 endmodule
-
+//16bit adder
 //http://www.edaboard.com/thread145292.html
 module CSA16(A,B,Ci,So,Co);
 input [15:0] A,B;
@@ -76,7 +76,7 @@ assign So[15:8] = c8?stemp1:stemp0;
 assign Co= c8?c161:c160;
 
 endmodule
-
+ //ANDC function for 16bits
 module AND16(A, B, C);
 	input[15:0] A;
 	input[15:0] B;
@@ -94,7 +94,7 @@ initial
 assign C = test;
 endmodule
 
-//125 in textbook
+//PC Mux, determine what value enters the PC
 module PCMUX(SR1OUT, add_one, next_instruction, select);
 
 input[15:0] SR1OUT; //input from register file
@@ -106,9 +106,10 @@ initial
    begin
 	case(select)
 	00 : begin 
-		     // A                              B           Ci       So      Co
+		//pass in instruction +1
 		CSA16(next_instruction[15:0], 16'b0000000000000001, 0, next_instruction[15:0], 0);
 	     end
+	//pass in next instruction
 	01 : CSA16(SR1OUT[15:0], 16'b0000000000000000, 0, next_instruction[15:0], 0);
 	//10 : //do nothing
 	endcase
@@ -122,27 +123,20 @@ input MARPC;
 input GATEPC;
 output[15:0]PCADDR; //chosen output for PC
 
-//reg[15:0] MAR, next_instruction;
-//reg MARPC, GATEPC;
-
 initial
    begin
 	if(GATEPC == 1 && MARPC == 1) 
+		//pass the MAR to the PCADDR array
 	CSA16(MAR[15:0], 16'b0000000000000000, 0, PCADDR[15:0], 0);
-
    end
 endmodule
-
-//memory & MDR
-	//put contents of next_instruction in MDR
-	//send MDR to IR
 
 module memory(MAR, LDMDR, GATEMDR, MDR, j);
 input [15:0] MAR;
 input LDMDR;
 input GATEMDR;
 output reg[15:0] MDR;
-reg [15:0] read_file;
+reg [15:0] memory_file;
 reg[15:0] it = 0000000000000000;
 input j;
 //m[mar] = mdr //use file with instructions.
@@ -153,7 +147,7 @@ always@(it)
 	0: begin//MDR = mem[MAR]
    		if(it == MAR)
 		begin 
-			read_file = $fopen("testbench.txt", r);
+			memory_file = $fopen("memory.txt", r);
 		end
 	   end
 	//1: //write to testbench put MDR in memory
@@ -163,7 +157,7 @@ always@(it)
 initial
    begin
 	if(LDMDR == 1 && GATEMDR == 1) MDR = read_file;
-	$fclose(readme.txt);
+	$fclose("memory.txt");
    end
 endmodule
 
@@ -178,9 +172,8 @@ module IR(LDIR, MDR, IR);
 endmodule
 
 //Finite State Machine
-module FSM(IR);
-input[15:0] IR;
-
+module FSM(IR); //separate the binary and put it in individual regs.
+	input[15:0] IR; 
 	reg [3:0] OPERATION;
 	reg FLAG;
 	reg[2:0] REGISTER1;
@@ -188,76 +181,102 @@ input[15:0] IR;
 	reg[7:0] DATA;
 	reg[6:0] ADDRESS;
 always@(*)
-begin
+   begin
 	casez(IR)
 		  
 		16'b00001???????????: //ADD RN, data
 			begin
 			assign{OPERATION, FLAG, REGISTER1, DATA} = IR;
+			
 			//  ALUK    SR2   reg1    reg2  data  addr, gatealu, answer
-			ALU(2'b11, 2'b01, REGISTER1, 0, DATA, 0,1'b1, 16'b0);
+			ALU(2'b11, 2'b01, REGISTER1, 2'b0, DATA, 5'b0, 1'b1, 16'b0);
 			$display("ADD Rn, #data\n");
 			end
 		 //5432109876543210
 		16'b00000???????????: //ADD RN, address
 			begin
 			assign{OPERATION, FLAG, REGISTER1, FLAG, ADDRESS} = IR;
-			ALU(2'b11, 2'b10, REGISTER1, 0, 1'b0, ADDRESS, 1'b1, 16'b0);
+
+			ALU(2'b11, 2'b10, REGISTER1, 2'b0, 8'b0, ADDRESS, 1'b1, 16'b0);
 			$display("ADD Rn, address\n");
 			end
  		  //5432109876543210
 		16'b00000????00010??: //ADD RN Ri
 			begin
 			assign{OPERATION, FLAG, REGISTER1, FLAG, FLAG, FLAG, FLAG, FLAG, REGISTER2} = IR;
-			ALU(2'b11, 2'b00, REGISTER1, REGISTER2, 0, 0, 1'b1, 16'b0);
+			ALU(2'b11, 2'b00, REGISTER1, REGISTER2, 8'b0, 5'b0, 1'b1, 16'b0);
 			$display("ADD Rn, @Ri");
 			end	
 		16'b00011???????????: //ANDC RN data
-			begin
+			begin //ADD MORE HERE
 			$display("ANDC Rn, data\n");
 			end
+		//ADD MORE CASES FOR OTHER FUNCTIONS HERE
        endcase
-end
+   end
 endmodule
 
-//ALU
 module ALU(ALUK, SR2select, REGISTER1, REGISTER2, DATA, ADDRESS, GATEALU, ANSWER);
-input[1:0] ALUK;
-input[1:0] SR2select;//01 for data, 10 for address, 00 for register
-input[15:0] REGISTER1;
-input[15:0] REGISTER2;
-input[7:0] DATA;
-input[6:0] ADDRESS;
-input GATEALU;
-output[15:0] ANSWER;
-
+	input[1:0] ALUK;
+	input[1:0] SR2select;//01 for data, 10 for address, 00 for register
+	input[2:0] REGISTER1;
+	input[2:0] REGISTER2;
+	input[7:0] DATA;
+	input[6:0] ADDRESS;
+	input GATEALU;
+	output[15:0] ANSWER;
+	reg[7:0] R1, R2;
 initial
    begin
-    if(ALUK== 2'b11 && GATEALU == 1) begin
+    if(ALUK == 2'b11 && GATEALU == 1) 
+	begin
 	//ADD
-	if(SR2select == 2'b01)
-		//     A                 B        C   Sum          C
-		CSA16(REGISTER1[15:0], DATA[7:0], 0, ANSWER[15:0], 0);
-	
+	if(SR2select == 2'b01) 
+	   begin
+		REGBANK(REGISTER1, 0, 0, 1, 0, 0);
+		CSA16(SR1OUT, DATA, 0, ANSWER, 0); 
+	   end
 	if(SR2select == 2'b10)
-		CSA16(REGISTER1[15:0], ADDRESS, 0, ANSWER[15:0], 0);
+	   begin
+		REGBANK(REGISTER1, 0, ADDRESS, 1, 0, 0);
+		CSA16(SR1OUT, ADDRESS, 0, ANSWER, 0);
+	   end
         if(SR2select == 2'b00)
-		CSA16(REGISTER1[15:0], REGISTER2[15:0], 0, ANSWER[15:0], 0);
+	   begin
+		REGBANK(REGISTER1, REGISTER2, 0, 1, 0, 0);
+		CSA16(SR1OUT, SR2OUT, 0, ANSWER, 0);
+	   end
      end
-   end
+
 endmodule
 
 
 //Register bank/file
-module REGBANK(REGISTER1, REGISTER2, LDREG, SR1OUT, SR2OUT);
-	input LDREG;
-	input REGISTER1, REGISTER2;
-	output SR1OUT, SR2OUT;
-initial 
-   begin
-	if(LDREG == 1) begin
+module REGBANK(REGISTER1, REGISTER2, ADDRESS, LDREGF, SR1OUT, SR2OUT);
 
+	input[2:0] REGISTER1;
+	input[2:0] REGISTER2;
+	input[6:0] ADDRESS;
+	input LDREGF;
+	output[15:0] SR1OUT;
+	output[15:0] SR2OUT;
+	reg x = 0;
+	reg y = 0;
+
+always @ (*) 
+   begin
+	 $fopen("registerfile.txt", r);
+	while(!$feof(fileid))
+	begin
+	   if(LDREGF == 1) 
+	   begin
+		if(REGISTER1 == x) $fgets(SR1OUT, fileid);
+		if(REGISTER2 == y) $fgets(SR2OUT, fileid);
+	   end
 	end
+	x <= x + 1;
+	y <= y + 1;
+	$fclose("registerfile.txt");
    end
 
 endmodule
