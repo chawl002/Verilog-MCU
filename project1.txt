@@ -1,9 +1,9 @@
-/*http://www.ece.umd.edu/courses/enee359a/verilog_tutorial.pdf
+//http://www.ece.umd.edu/courses/enee359a/verilog_tutorial.pdf
 //need to create clock generator function
-always begin
-#5 clock = ~clock //toggle every 5 ticks
-end
-*/
+//always begin
+//#5 clock = ~clock //toggle every 5 ticks
+//end
+
 //taken from http://www.edaboard.com/thread145292.html
 //4 bit adder
 module RCA4(A,B,Ci,So,Co);
@@ -36,6 +36,7 @@ assign So[1]=g1^p1^c1;
 assign So[2]=g2^p2^c2;
 assign So[3]=g3^p3^c3;
 endmodule
+
 //8bit adder
 //http://www.edaboard.com/thread145292.html
 module CSA8(A,B,Ci,So,Co);
@@ -56,6 +57,7 @@ assign So[7:4] = c4?stemp1:stemp0;
 assign Co= c4?c81:c80;
 
 endmodule
+
 //16bit adder
 //http://www.edaboard.com/thread145292.html
 module CSA16(A,B,Ci,So,Co);
@@ -76,6 +78,7 @@ assign So[15:8] = c8?stemp1:stemp0;
 assign Co= c8?c161:c160;
 
 endmodule
+
  //ANDC function for 16bits
 module AND16(A, B, C);
 	input[15:0] A;
@@ -107,10 +110,10 @@ initial
 	case(select)
 	00 : begin 
 		//pass in instruction +1
-		CSA16(next_instruction[15:0], 16'b0000000000000001, 0, next_instruction[15:0], 0);
+		CSA16 csa16_6(next_instruction[15:0], 16'b0000000000000001, 0, next_instruction[15:0], 0);
 	     end
 	//pass in next instruction
-	01 : CSA16(SR1OUT[15:0], 16'b0000000000000000, 0, next_instruction[15:0], 0);
+	01 : CSA16 csa16_5(SR1OUT[15:0], 16'b0000000000000000, 0, next_instruction[15:0], 0);
 	//10 : //do nothing
 	endcase
    end
@@ -127,7 +130,7 @@ initial
    begin
 	if(GATEPC == 1 && MARPC == 1) 
 		//pass the MAR to the PCADDR array
-	CSA16(MAR[15:0], 16'b0000000000000000, 0, PCADDR[15:0], 0);
+	CSA16 csa16_4(MAR[15:0], 16'b0000000000000000, 0, PCADDR[15:0], 0);
    end
 endmodule
 
@@ -156,7 +159,7 @@ always@(it)
    end
 initial
    begin
-	if(LDMDR == 1 && GATEMDR == 1) MDR = read_file;
+	if(LDMDR == 1 && GATEMDR == 1) MDR = memory_file;
 	$fclose("memory.txt");
    end
 endmodule
@@ -168,7 +171,7 @@ module IR(LDIR, MDR, IR);
 	output[15:0] IR;
 
    initial 
-	if(LDIR == 1) CSA16(MDR[15:0], 16'b0000000000000000, 0, IR[15:0], 0);
+	if(LDIR == 1) CSA16 csa16_0(MDR[15:0], 16'b0000000000000000, 0, IR[15:0], 0);
 endmodule
 
 //Finite State Machine
@@ -180,7 +183,7 @@ module FSM(IR); //separate the binary and put it in individual regs.
 	reg[2:0] REGISTER2;
 	reg[7:0] DATA;
 	reg[6:0] ADDRESS;
-always@(*)
+initial
    begin
 	casez(IR)
 		  
@@ -189,7 +192,7 @@ always@(*)
 			assign{OPERATION, FLAG, REGISTER1, DATA} = IR;
 			
 			//  ALUK    SR2   reg1    reg2  data  addr, gatealu, answer
-			ALU(2'b11, 2'b01, REGISTER1, 2'b0, DATA, 5'b0, 1'b1, 16'b0);
+			ALU alu_0(2'b11, 2'b01, REGISTER1, 2'b0, DATA, 5'b0, 1'b1, 16'b0);
 			$display("ADD Rn, #data\n");
 			end
 		 //5432109876543210
@@ -197,14 +200,14 @@ always@(*)
 			begin
 			assign{OPERATION, FLAG, REGISTER1, FLAG, ADDRESS} = IR;
 
-			ALU(2'b11, 2'b10, REGISTER1, 2'b0, 8'b0, ADDRESS, 1'b1, 16'b0);
+			ALU alu_1(2'b11, 2'b10, REGISTER1, 2'b0, 8'b0, ADDRESS, 1'b1, 16'b0);
 			$display("ADD Rn, address\n");
 			end
  		  //5432109876543210
 		16'b00000????00010??: //ADD RN Ri
 			begin
 			assign{OPERATION, FLAG, REGISTER1, FLAG, FLAG, FLAG, FLAG, FLAG, REGISTER2} = IR;
-			ALU(2'b11, 2'b00, REGISTER1, REGISTER2, 8'b0, 5'b0, 1'b1, 16'b0);
+			ALU alu_2(2'b11, 2'b00, REGISTER1, REGISTER2, 8'b0, 5'b0, 1'b1, 16'b0);
 			$display("ADD Rn, @Ri");
 			end	
 		16'b00011???????????: //ANDC RN data
@@ -216,7 +219,7 @@ always@(*)
    end
 endmodule
 
-module ALU(ALUK, SR2select, REGISTER1, REGISTER2, DATA, ADDRESS, GATEALU, ANSWER);
+module ALU(ALUK, SR2select, REGISTER1, REGISTER2, DATA, ADDRESS, GATEALU, ANSWER, SR1OUT, SR2OUT);
 	input[1:0] ALUK;
 	input[1:0] SR2select;//01 for data, 10 for address, 00 for register
 	input[2:0] REGISTER1;
@@ -225,7 +228,9 @@ module ALU(ALUK, SR2select, REGISTER1, REGISTER2, DATA, ADDRESS, GATEALU, ANSWER
 	input[6:0] ADDRESS;
 	input GATEALU;
 	output[15:0] ANSWER;
-	reg[7:0] R1, R2;
+	output[15:0] SR1OUT;
+	output[15:0] SR2OUT;
+	wire[7:0] R1, R2;
 initial
    begin
     if(ALUK == 2'b11 && GATEALU == 1) 
@@ -233,21 +238,21 @@ initial
 	//ADD
 	if(SR2select == 2'b01) 
 	   begin
-		REGBANK(REGISTER1, 0, 0, 1, 0, 0);
-		CSA16(SR1OUT, DATA, 0, ANSWER, 0); 
+		REGBANK_0(REGISTER1, 0, 0, 1, 0, 0);
+		CSA16 csa16_1(SR1OUT, DATA, 0, ANSWER, 0); 
 	   end
 	if(SR2select == 2'b10)
 	   begin
-		REGBANK(REGISTER1, 0, ADDRESS, 1, 0, 0);
-		CSA16(SR1OUT, ADDRESS, 0, ANSWER, 0);
+		REGBANK regbank_1(REGISTER1, 0, ADDRESS, 1, 0, 0);
+		CSA16 csa16_2(SR1OUT, ADDRESS, 0, ANSWER, 0);
 	   end
         if(SR2select == 2'b00)
 	   begin
-		REGBANK(REGISTER1, REGISTER2, 0, 1, 0, 0);
-		CSA16(SR1OUT, SR2OUT, 0, ANSWER, 0);
+		REGBANK regbank_2(REGISTER1, REGISTER2, 0, 1, 0, 0);
+		CSA16 csa16_3(SR1OUT, SR2OUT, 0, ANSWER, 0);
 	   end
      end
-
+end
 endmodule
 
 
@@ -257,21 +262,22 @@ module REGBANK(REGISTER1, REGISTER2, ADDRESS, LDREGF, SR1OUT, SR2OUT);
 	input[2:0] REGISTER1;
 	input[2:0] REGISTER2;
 	input[6:0] ADDRESS;
-	input LDREGF;
+	input[1:0] LDREGF;
 	output[15:0] SR1OUT;
 	output[15:0] SR2OUT;
-	reg x = 0;
-	reg y = 0;
-
+	integer ops;
+	reg x = 1'b0;
+	reg y = 1'b0;
 always @ (*) 
    begin
-	 $fopen("registerfile.txt", r);
-	while(!$feof(fileid))
+
+	ops = $fopen("registerfile.txt", "rb");
+	while(!$feof("registerfile.txt"))
 	begin
 	   if(LDREGF == 1) 
 	   begin
-		if(REGISTER1 == x) $fgets(SR1OUT, fileid);
-		if(REGISTER2 == y) $fgets(SR2OUT, fileid);
+		if(REGISTER1 == x) ops = $fscanf(ops, "%b\n", SR1OUT);
+		if(REGISTER2 == y) ops = $fscanf(ops, "%b\n", SR2OUT);
 	   end
 	end
 	x <= x + 1;
@@ -280,3 +286,4 @@ always @ (*)
    end
 
 endmodule
+
