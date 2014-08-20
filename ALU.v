@@ -12,6 +12,8 @@ module ALU(ALUK, SR2select, REGISTER1, REGISTER2, DATA, ADDRESS, GATEALU, ANSWER
 	output[15:0] SR1OUT;
 	output[15:0] SR2OUT;
 	reg[15:0] R1;
+	//reg C_i;
+	//reg C_o;
 initial
    begin
     if(ALUK == 2'b11 && GATEALU == 1) 
@@ -37,7 +39,7 @@ initial
 	   end
      end
 end
-REGBANK(.REGISTER1(REGISTER1), .REGISTER2(REGISTER2), .ADDRESS(ADDRESS), .LDREGF(1'b1), .SR1OUT(0), .SR2OUT(0));
-CSA16(.A(SR1OUT), .B(R1), .Ci(0), .So(ANSWER), .Co(0));
+REGBANK inst0(.REGISTER1(REGISTER1), .REGISTER2(REGISTER2), .ADDRESS(ADDRESS), .LDREGF(1'b1), .SR1OUT(0), .SR2OUT(0));
+CSA16 inst1(.A(SR1OUT), .B(R1), .Ci(1'b0), .So(ANSWER), .Co(1'b0));
 endmodule
 `endif

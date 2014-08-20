@@ -13,20 +13,19 @@ module REGBANK(REGISTER1, REGISTER2, ADDRESS, LDREGF, SR1OUT, SR2OUT);
 	integer ops;
 	reg x_1 = 1'b0;
 	reg y_1 = 1'b0;
-always
+initial
    begin
-
 	ops = $fopen("registerfile.txt", "rb");
 	while(!$feof("registerfile.txt"))
 	begin
 	   if(LDREGF == 1) 
-	   begin
-		if(REGISTER1 == x_1) ops = $fread("registerfile.txt", SR1OUT);//ops = $fscanf(ops, "%b\n", SR1OUT);
-		if(REGISTER2 == y_1) ops = $fread("registerfile.txt", SR2OUT);//ops = $fscanf(ops, "%b\n", SR2OUT);
-	   end
-	end
+	      begin
+		if(REGISTER1 == x_1) $readmemb("registerfile.txt", 1);//ops = $fscanf(ops, "%b\n", SR1OUT);
+		if(REGISTER2 == y_1) $readmemb("registerfile.txt", 1); //replace one with memory - http://verilog.renerta.com/mobile/source/vrg00016.htm
+	      end
 	x_1 <= x_1 + 1;
 	y_1 <= y_1 + 1;
+	end
 	$fclose("registerfile.txt");
    end
 

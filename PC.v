@@ -1,6 +1,5 @@
 `ifndef _PC_v_
-`define _PC_v_
-
+`define _PC_v_
 
 module PC(MAR, /*MARPC, GATEPC, */PCADDR);
 ///input clk;
