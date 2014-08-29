@@ -51,15 +51,13 @@ always@(*)
 	if(LDREGF == 1)
 	begin
 		address_extended = extend8(Address_mem[7:0]);
-		//Address_mem[15:0] = Address_mem[7:0] + zero_extender[15:0];
 	end
    end
 
 
 //call memory here and put into SROUTs
-memory inst2(.MAR(address_extended), .LDMDR(1'b1), .LDMAR(1'b1), .GATEMDR(1'b1), .MDR(SR1OUT));
-memory inst3(.MAR(address_extended), .LDMDR(1'b1), .LDMAR(1'b1), .GATEMDR(1'b1), .MDR(SR2OUT));
-//return SRsOUT
+ROM inst2(.MAR(address_extended), .LDMAR(1'b1), .MDR(SR1OUT));
+ROM inst3(.MAR(address_extended), .LDMAR(1'b1), .MDR(SR2OUT));
 endmodule
 
 `endif

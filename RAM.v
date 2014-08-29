@@ -1,7 +1,8 @@
 `ifndef _RAM_v_
 `define _RAM_v_
 
-module RAM(MDR, LDMEM, LDMDR);
+module RAM(MAR, MDR, LDMEM, LDMDR);
+input[15:0] MAR;
 input [15:0] MDR;
 input LDMEM;
 input LDMDR;
@@ -16,9 +17,9 @@ always@(*)
 	ops = $fopen("memory.txt", "w+"); //open file to write
 	if(LDMDR == 1)
 	  begin 
-		for (i=0; i == !$feof(ops); i=i+1) 
+		for (i=0; i == !$feof(ops) && position != MAR; i=i+1) 
 		begin
-			//address[15:0] = address[15:0] + 16'b1;
+
 			position = $ftell(ops);//go through array to find position in file 
 		end
 		trash = $fseek(ops, position, 0); //ftell to return position -> fseek to use position	

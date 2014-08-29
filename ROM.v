@@ -1,9 +1,10 @@
 `ifndef _RAM_v_
 `define _RAM_v_
 
-module ROM(LDMAR, MAR);
+module ROM(MAR, LDMAR, MDR);
 input LDMAR;
-input MAR;
+input[15:0] MAR;
+output reg[15:0] MDR;
 integer ops;
 integer position;
 integer trash;
@@ -25,7 +26,7 @@ always@(*)
 			position = $ftell(ops); //find position
 			trash = $fseek(ops, position, 0); //find position in specific file
 			//ftell to return position -> fseek to use position
-			trash = $fread(ops, memory_file);
+			MDR[15:0] = $fread(ops, memory_file);
 		   end
 	    end
 	end

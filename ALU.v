@@ -49,8 +49,8 @@ always@(*)
 	endcase
      end
    end
-memory inst5(.MAR(zero_extend_REG1), .LDMDR(1'b1), .LDMAR(1'b1), .GATEMDR(1'b1), .MDR(SR1OUT));//pull info from memory and put into SR1
-memory inst6(.MAR(zero_extend_REG2), .LDMDR(1'b1), .LDMAR(1'b1), .GATEMDR(1'b1), .MDR(SR2OUT));
+ROM inst5(.MAR(zero_extend_REG1), .LDMAR(1'b1), .MDR(SR1OUT));//pull info from memory and put into SR1
+ROM inst6(.MAR(zero_extend_REG2), .LDMAR(1'b1), .MDR(SR2OUT));
 
 initial
 begin
@@ -59,7 +59,7 @@ begin
 		assign zero_extend_indirect = SR2OUT;
 	end
 end
-memory inst7(.MAR(zero_extend_indirect), .LDMDR(1'b1), .LDMAR(1'b1), .GATEMDR(1'b1), .MDR(SR2OUT));
+ROM inst7(.MAR(zero_extend_indirect), .LDMAR(1'b1), .MDR(SR2OUT));
 assign ANSWER[15:0] = SR2OUT[15:0] + SR1OUT[15:0];
 endmodule
 `endif
